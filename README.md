@@ -1,18 +1,20 @@
 homeassistant
 =============
 
-Sets up and configures [Home Assistant](https://home-assistant.io/).
+Sets up and configures [Home Assistant](https://home-assistant.io/). Tested on
+[Raspbian](https://www.raspbian.org/), feel free to open a PR with support for
+other platforms.
 
 Role Variables
 --------------
 
-    enable_zwave: no
-
 Whether or not to enable ZWave support.
 
-    hass_configuration: ''
+    enable_zwave: no
 
 The contents of the Home Assistant `configuration.yaml` file.
+
+    hass_configuration: ''
 
 Example Playbook
 ----------------
