@@ -1,2 +1,116 @@
 ---
-# tasks file for homeassistant
+- block:
+  - name: Ensure dependencies are installed
+    apt: name={{ item }} state=latest
+    with_items:
+      - python-pip
+      - python3-dev
+
+  - name: Ensure zwave dependencies are installed
+    apt: name={{ item }} state=latest
+    with_items:
+      - cython3
+      - libudev-dev
+      - python3-sphinx
+      - python3-setuptools
+    when: enable_zwave
+
+  - name: Ensure `virtualenv` is installed
+    pip: name=virtualenv state=latest
+
+  - name: Create user for home assistant
+    user:
+      name: hass
+      groups: dialout
+      system: yes
+
+  - name: Create hass directory
+    file:
+      path: /srv/hass
+      state: directory
+      mode: 0755
+      owner: hass
+      group: hass
+  become: yes
+  become_user: root
+
+- block:
+  - name: Install hass
+    pip:
+      name: homeassistant
+      state: latest
+      virtualenv: /srv/hass
+      virtualenv_python: python3
+
+  - name: Install zwave virtualenv dependencies
+    pip:
+      name: cython
+      state: latest
+      virtualenv: /srv/hass
+    when: enable_zwave
+
+  - name: Ensure homeassistant configuration directory exists
+    file:
+      path: /home/hass/.homeassistant
+      state: directory
+      mode: 0755
+      owner: hass
+      group: hass
+    become: yes
+    become_user: hass
+
+  - name: Copy over configuration file
+    copy:
+      content: "{{ hass_configuration }}"
+      dest: /home/hass/.homeassistant/configuration.yaml
+      mode: 0755
+
+  - name: Create python-zwave temp directory
+    file: name=/srv/hass/src state=directory
+    when: enable_zwave
+
+  - name: Pull down python-openzwave code
+    git:
+      repo: https://github.com/OpenZWave/python-openzwave.git
+      dest: /srv/hass/src/python-openzwave
+      version: python3
+    when: enable_zwave
+
+  - name: Make python-openzwave
+    make:
+      target: "{{ item }}"
+      chdir: /srv/hass/src/python-openzwave
+    with_items:
+      - build
+      - install
+    environment:
+      PYTHON_EXEC: /srv/hass/bin/python
+    when: enable_zwave
+  become: yes
+  become_user: hass
+
+- block:
+  - name: Copy hass unit file
+    copy:
+      content: |
+        [Unit]
+        Description=Home Assistant
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=hass
+        ExecStart=/srv/hass/bin/hass
+
+        [Install]
+        WantedBy=multi-user.target
+      dest: /etc/systemd/system/home-assistant.service
+
+  - name: Enable hass systemd service
+    shell: "{{ item }}"
+    with_items:
+      - systemctl --system daemon-reload
+      - systemctl enable home-assistant
+      - systemctl start home-assistant
+  become: yes
+  become_user: root

@@ -1,2 +1,6 @@
 ---
-# defaults file for homeassistant
+# Whether or not to enable ZWave support
+enable_zwave: no
+
+# The contents of the Home Assistant configuration.yml file
+hass_configuration: ''
